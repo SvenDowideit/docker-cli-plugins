@@ -12,6 +12,9 @@ HERE
 exit
 fi
 
+prefix=""
+postcmd=""
+
 DOCKERCMD=$(echo "$0" | sed 's/.*\///' | sed 's/[^-]*-//')
 while test $# -gt 0
 do
@@ -24,14 +27,14 @@ do
           if [[ "$servicename" == "" ]]; then
                prefix="$prefix $1"
           else
-               postfix="$postfix $1"
+               postcmd="$postcmd $1"
           fi
             ;;
         *) 
           if [[ "$servicename" == "" ]]; then
                servicename="$1"
           else
-               postfix="$postfix $1"
+               postcmd="$postcmd $1"
           fi
             ;;
     esac
@@ -49,10 +52,10 @@ fi
 
 # detect if its a local running container first..
 if name=$(docker ps --format "{{.ID}}" | grep "^$servicename$"); then
-     exec docker exec $prefix $name $postfix
+     exec docker exec $prefix $name $postcmd
 fi
 if name=$(docker ps --format "{{.Names}}" | grep "^$servicename$"); then
-     exec docker exec $prefix $name $postfix
+     exec docker exec $prefix $name $postcmd
 fi
 
 tasklines=()
@@ -62,31 +65,37 @@ done < <( docker service ps $servicename --format "{{.Name}},{{.Node}},{{.Curren
 echo "Found ${#tasklines[@]} $servicename tasks"
 echo
 
+self=$(docker node inspect --format "{{.Description.Hostname}}" self)
+
+echo "----------------------------------------------------------"
 for taskline in "${tasklines[@]}"; do
      # first, work out what node we need to get to
      taskname=$(echo "$taskline" | sed 's/,.*//')
      original_node=$(echo "$taskline" | sed 's/.*,\(.*\),.*/\1/')
 
+     # skip the ssh if we're local
+     # TODO: add sudo support if needed
+     dockercmd="docker"
      node="$original_node"
-
-     if ! ping -c 1 $node >/dev/null 2>&1 ; then
-          node="$original_node.$(hostname -d)"
-     fi
-     if ! ping -c 1 $node >/dev/null 2>&1 ; then
-          # last ditch attempt
-          node="$original_node.it.csiro.au"
+     if [[ "$self" != "$original_node" ]]; then
+          if ! ping -c 1 $node >/dev/null 2>&1 ; then
+               node="$original_node.$(hostname -d)"
+          fi
+          if ! ping -c 1 $node >/dev/null 2>&1 ; then
+               # last ditch attempt
+               node="$original_node.it.csiro.au"
+          fi
+          dockercmd="ssh -t $node docker"
+          # TODO: skip the ssh and use -H if we're >18.09 and have a way to ssh
      fi
 
      # # second, find the service task's running container
-     containername=$(ssh $node docker ps --format '{{.Names}}' | grep "^$taskname")
+     containername=$($dockercmd ps --format '{{.Names}}' | grep "^$taskname" | sed 's/\r//')
 
-     # TODO: skip the ssh if we're local
-     # TODO: skip the ssh and use -H if we're >18.09 and have a way to ssh
-
-     CMDLINE="ssh -t $node docker exec $prefix $containername $postfix"
-     echo "----------------------------------------------------------"
-     echo "$node: $CMDLINE"
-     $CMDLINE
+     #echo "$dockercmd exec $prefix $containername $postcmd"
+     #echo "----------------------------------------------------------"
+     echo "$node:"
+     $dockercmd exec $prefix $containername $postcmd
      echo "----------------------------------------------------------"
 done
 
