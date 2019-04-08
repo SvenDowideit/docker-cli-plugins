@@ -47,6 +47,14 @@ if [ "$HELP" == "true" ]; then
      exit 1
 fi
 
+# detect if its a local running container first..
+if name=$(docker ps --format "{{.ID}}" | grep "^$servicename$"); then
+     exec docker exec $prefix $name $postfix
+fi
+if name=$(docker ps --format "{{.Names}}" | grep "^$servicename$"); then
+     exec docker exec $prefix $name $postfix
+fi
+
 tasklines=()
 while IFS= read -r line; do
     tasklines+=( "$line" )
