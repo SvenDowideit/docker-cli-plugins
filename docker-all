@@ -4,9 +4,9 @@ if [[ "$1" == "docker-cli-plugin-metadata" ]]; then
 cat << HERE
 {
      "SchemaVersion": "0.1.0",
-     "Vendor": "https://github.com/SvenDowideit/",
+     "Vendor": "https://github.com/SvenDowideit/docker-cli-plugins",
      "Version": "v0.1.0",
-     "ShortDescription": "Run docker system prune on all nodes"
+     "ShortDescription": "Run docker command on all nodes"
 }
 HERE
 exit

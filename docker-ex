@@ -1,0 +1,85 @@
+#!/bin/bash
+
+if [[ "$1" == "docker-cli-plugin-metadata" ]]; then
+cat << HERE
+{
+     "SchemaVersion": "0.1.0",
+     "Vendor": "https://github.com/SvenDowideit/",
+     "Version": "v0.1.0",
+     "ShortDescription": "Swarm aware docker exec"
+}
+HERE
+exit
+fi
+
+DOCKERCMD=$(echo "$0" | sed 's/.*\///' | sed 's/[^-]*-//')
+while test $# -gt 0
+do
+    case "$1" in
+        "$DOCKERCMD")
+            ;;
+        --help) HELP=true
+            ;;
+        -*)
+          if [[ "$servicename" == "" ]]; then
+               prefix="$prefix $1"
+          else
+               postfix="$postfix $1"
+          fi
+            ;;
+        *) 
+          if [[ "$servicename" == "" ]]; then
+               servicename="$1"
+          else
+               postfix="$postfix $1"
+          fi
+            ;;
+    esac
+    shift
+done
+
+if [ "$HELP" == "true" ]; then
+     echo "docker ex [OPTIONS] SERVICE[.TASKID] COMMAND [ARG..]"
+     echo
+     echo "  Run a command in a running service task / tasks"
+     echo
+     echo "  options the same as 'docker exec'"
+     exit 1
+fi
+
+tasklines=()
+while IFS= read -r line; do
+    tasklines+=( "$line" )
+done < <( docker service ps $servicename --format "{{.Name}},{{.Node}},{{.CurrentState}}" | grep "Running" )
+echo "Found ${#tasklines[@]} $servicename tasks"
+echo
+
+for taskline in "${tasklines[@]}"; do
+     # first, work out what node we need to get to
+     taskname=$(echo "$taskline" | sed 's/,.*//')
+     original_node=$(echo "$taskline" | sed 's/.*,\(.*\),.*/\1/')
+
+     node="$original_node"
+
+     if ! ping -c 1 $node >/dev/null 2>&1 ; then
+          node="$original_node.$(hostname -d)"
+     fi
+     if ! ping -c 1 $node >/dev/null 2>&1 ; then
+          # last ditch attempt
+          node="$original_node.it.csiro.au"
+     fi
+
+     # # second, find the service task's running container
+     containername=$(ssh $node docker ps --format '{{.Names}}' | grep "^$taskname")
+
+     # TODO: skip the ssh if we're local
+     # TODO: skip the ssh and use -H if we're >18.09 and have a way to ssh
+
+     CMDLINE="ssh -t $node docker exec $prefix $containername $postfix"
+     echo "----------------------------------------------------------"
+     echo "$node: $CMDLINE"
+     $CMDLINE
+     echo "----------------------------------------------------------"
+done
+
+exit 0
