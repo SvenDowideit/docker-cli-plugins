@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [[ "$1" == "docker-cli-plugin-metadata" ]]; then
+cat << HERE
+{
+     "SchemaVersion": "0.1.0",
+     "Vendor": "https://github.com/SvenDowideit/",
+     "Version": "v0.1.0",
+     "ShortDescription": "Run docker system prune on all nodes"
+}
+HERE
+exit
+fi
+
+docker all system prune -f --volumes

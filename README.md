@@ -1,5 +1,12 @@
 # docker-helloworld
-docler cli hello world cli plugin example
+
+Docker cli hello world cli plugin examples. This repo can be checked out into `~/.docker/cli-plugins`
+
+This repo contains several Docker CLI plugins:
+* main.go - `docker-helloworld`: to be built `go build -o docker-helloworld main.go`
+* `docker-env` - utterly simplistic bash example that can be run using `docker env`
+* `docker-all` - run whatever docker command follows `all` on all swarm nodes (should work in standalone too)
+* `docker-prune` - run `docker system prune -f --volumes` on all swarm nodes (should work in standalone too)
 
 main.go comes from https://github.com/docker/cli - in cli-plugins/examples
 

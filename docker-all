@@ -1,0 +1,52 @@
+#!/bin/bash
+
+if [[ "$1" == "docker-cli-plugin-metadata" ]]; then
+cat << HERE
+{
+     "SchemaVersion": "0.1.0",
+     "Vendor": "https://github.com/SvenDowideit/",
+     "Version": "v0.1.0",
+     "ShortDescription": "Run docker system prune on all nodes"
+}
+HERE
+exit
+fi
+
+DOCKERCMD=$(echo "$0" | sed 's/.*\///' | sed 's/[^-]*-//')
+CMDLINE="docker"
+while test $# -gt 0
+do
+    case "$1" in
+        "$DOCKERCMD")
+            ;;
+        --help) HELP=true
+            ;;
+     #    --*) echo "bad option $1"
+     #         HELP=true
+     #        ;;
+        *) CMDLINE="$CMDLINE $1"
+            ;;
+    esac
+    shift
+done
+
+if [ "$HELP" == "true" ]; then
+     echo send help
+     exit 1
+fi
+
+for original_node in $(docker node ls --format "{{.Hostname}}"); do
+     node="$original_node"
+
+     if ! ping -c 1 $node >/dev/null 2>&1 ; then
+          node="$original_node.$(hostname -d)"
+     fi
+     if ! ping -c 1 $node >/dev/null 2>&1 ; then
+          # last ditch attempt
+          node="$original_node.it.csiro.au"
+     fi
+     echo "$node: $CMDLINE"
+     ssh $node $CMDLINE;
+done
+
+exit 0
