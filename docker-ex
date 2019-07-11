@@ -16,18 +16,28 @@ prefix=""
 postcmd=""
 
 DOCKERCMD=$(echo "$0" | sed 's/.*\///' | sed 's/[^-]*-//')
+shift
+if test $# -lt 2; then
+     HELP=true
+fi
+
 while test $# -gt 0
 do
     case "$1" in
-        "$DOCKERCMD")
-            ;;
+     #    "$DOCKERCMD")
+     #        ;;
         --help) HELP=true
             ;;
         -*)
+          opt="$1"
+          if [[ "$opt" == "-e" || "$opt" == "--env" || "$opt" == "--detatch-keys" || "$opt" == "-u" || "$opt" == "--user" || "$opt" == "-w" || "$opt" == "--workdir" ]]; then
+               shift
+               opt="$opt $1"
+          fi
           if [[ "$servicename" == "" ]]; then
-               prefix="$prefix $1"
+               prefix="$prefix $opt"
           else
-               postcmd="$postcmd $1"
+               postcmd="$postcmd $opt"
           fi
             ;;
         *) 
@@ -47,6 +57,8 @@ if [ "$HELP" == "true" ]; then
      echo "  Run a command in a running service task / tasks"
      echo
      echo "  options the same as 'docker exec'"
+     echo
+     docker exec --help
      exit 1
 fi
 
