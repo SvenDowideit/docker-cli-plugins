@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [[ "$1" == "docker-cli-plugin-metadata" ]]; then
+cat << HERE
+{
+     "SchemaVersion": "0.1.0",
+     "Vendor": "https://github.com/SvenDowideit/docker-cli-plugins",
+     "Version": "v0.1.0",
+     "ShortDescription": "Run lazydocker"
+}
+HERE
+exit
+fi
+
+if ! which lazydocker; then
+    echo "Please install https://github.com/jesseduffield/lazydocker"
+    echo
+    exit
+fi
+
+lazydocker
